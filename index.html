@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IPL NEON ARENA | LEGENDS EDITION</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+ :root {
+  --violet: #8b5cf6; --blue: #06b6d4; --dark: #020617;
+  --neon: 0 0 25px rgba(139, 92, 246, 0.8);
+ }
+
+ body {
+  margin: 0; font-family: 'Segoe UI', Roboto, sans-serif;
+  background: #000; color: white; overflow: hidden; height: 100vh;
+ }
+
+ .bg {
+  position: fixed; inset: 0;
+  background: url("https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2000") center/cover no-repeat;
+  filter: brightness(.7) contrast(1.1); z-index: -3;
+  animation: bgSlowMove 20s infinite alternate;
+ }
+ @keyframes bgSlowMove { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+ .overlay {
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at center, transparent, var(--dark) 90%);
+  z-index: -2;
+ }
+
+ .page {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; opacity: 0;
+  transform: scale(0.9) translateY(30px); pointer-events: none; 
+  transition: all 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+  padding: 20px; box-sizing: border-box;
+ }
+ .page.show { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+
+ .card {
+  background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px);
+  padding: clamp(20px, 5vw, 40px); border-radius: 40px; border: 2px solid var(--violet);
+  box-shadow: var(--neon); text-align: center; width: 100%; max-width: 420px;
+  position: relative; animation: float 4s ease-in-out infinite;
+ }
+ @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+ .p-wrap { overflow: hidden; width: 160px; height: 160px; margin: 0 auto 15px; border-radius: 50%; border: 4px solid var(--blue); box-shadow: 0 0 20px var(--blue); }
+ #pimg { width: 100%; height: 100%; object-fit: cover; }
+ .img-enter { animation: slideIn 0.6s forwards; }
+ @keyframes slideIn { from { transform: translateX(-150%); } to { transform: translateX(0); } }
+
+ #hammer {
+  position: absolute; top: -50px; right: -20px; font-size: 80px;
+  opacity: 0; transition: 0.3s; pointer-events: none;
+ }
+ .strike { opacity: 1 !important; animation: hammerHit 0.6s ease forwards; }
+ @keyframes hammerHit { 0% { transform: rotate(45deg); } 50% { transform: rotate(-40deg); } 100% { transform: rotate(0deg); } }
+
+ #price-display {
+  font-size: clamp(32px, 8vw, 48px); font-weight: 900; color: var(--blue); margin: 15px 0;
+  text-shadow: 0 0 15px var(--blue); transition: 0.2s;
+ }
+ .bid-shake { animation: shake 0.3s ease; color: #fff !important; }
+ @keyframes shake { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15) rotate(2deg); } }
+
+ .btn {
+  background: linear-gradient(135deg, var(--violet), var(--blue));
+  border: none; padding: 16px 45px; border-radius: 50px; color: white;
+  font-weight: 800; cursor: pointer; transition: 0.3s; text-transform: uppercase;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3); font-size: 16px;
+ }
+ .btn:hover { transform: translateY(-5px); filter: brightness(1.2); box-shadow: var(--neon); }
+
+ .grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 15px; width: 100%; max-width: 1000px;
+ }
+ .squad-view { max-height: 60vh; overflow-y: auto; width: 100%; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 20px; }
+</style>
+</head>
+<body>
+
+<canvas id="fireworks" style="position:fixed; inset:0; pointer-events:none; z-index:100;"></canvas>
+<div class="bg"></div>
+<div class="overlay"></div>
+
+<div id="home" class="page show">
+ <h1 style="font-size: clamp(40px, 10vw, 70px); text-shadow: var(--neon); text-align: center;">MEGA AUCTION</h1>
+ <p style="letter-spacing: 5px; margin-bottom: 30px;">NEON ARENA 2026</p>
+ <button class="btn" onclick="startNewAuction()">Enter Arena</button>
+</div>
+
+<div id="teamSelect" class="page">
+ <h2 style="margin-bottom:25px">Select Your Franchise</h2>
+ <div id="teamGrid" class="grid"></div>
+</div>
+
+<div id="auction" class="page">
+ <div class="card" id="mainCard">
+  <div id="hammer">🔨</div>
+  <div id="timer" style="font-size:28px; color:#ff4757; font-weight:900;">30s</div>
+  <div class="p-wrap"><img id="pimg" src="" alt="Player"></div>
+  <h2 id="pname" style="margin:5px 0; text-transform:uppercase; letter-spacing:2px;"></h2>
+  <div id="price-display">₹<span id="price">0</span> Cr</div>
+  <button class="btn" onclick="userBid()" style="width:100%">Raise Paddle</button>
+  <p id="status-log" style="font-size:14px; color:var(--blue); margin-top:15px; font-weight:bold;"></p>
+ </div>
+ <button class="btn" onclick="showSquads(false)" style="margin-top:20px; background:transparent; border:1px solid white;">View Rosters</button>
+</div>
+
+<div id="squadPage" class="page">
+ <h1 id="squad-title">Team Rosters</h1>
+ <div id="squadGrid" class="grid squad-view"></div>
+ <button id="back-btn" class="btn" onclick="nav('auction')" style="margin-top:20px">Back</button>
+</div>
+
+<script>
+const teams = ["CSK", "MI", "RCB", "KKR", "RR", "SRH", "DC", "PBKS", "GT", "LSG"];
+let purse = {}, rosters = {}, myTeam = "", pIdx = 0, currentPrice = 0, lead = null, timer;
+let isSpeaking = false;
+
+// 🏏 20 Legends Roster
+const players = [
+ {n:"Virat Kohli", b:2, i:"virat.jpeg"},
+ {n:"MS Dhoni", b:2, i:"dhoni.jpeg"},
+ {n:"Rohit Sharma", b:2, i:"rohit.jpeg"},
+ {n:"David Warner", b:2, i:"warner.jpeg"},
+ {n:"AB de Villiers", b:2, i:"abd.jpeg"},
+ {n:"Suresh Raina", b:2, i:"sureshraina.jpeg"},
+ {n:"Chris Gayle", b:2, i:"gayle.jpeg"},
+ {n:"Dwayne Bravo", b:2, i:"bravo.jpeg"},
+ {n:"Sunil Narine", b:2, i:"sunil.jpeg"},
+ {n:"Andre Russell", b:2, i:"russel.jpeg"},
+ {n:"Jasprit Bumrah", b:2, i:"bumrah.jpeg"},
+ {n:"Bhuvneshwar Kumar", b:2, i:"bhuvi.jpeg"},
+ {n:"Lasith Malinga", b:2, i:"malinga.jpeg"},
+ {n:"Rashid Khan", b:2, i:"rashidkhan.jpeg"},
+ {n:"Ravichandran Ashwin", b:2, i:"ashiwin.jpeg"},
+ {n:"Shikhar Dhawan", b:2, i:"dhawan.jpeg"},
+ {n:"Brendon McCullum", b:2, i:"mccullum.jpeg"},
+ {n:"Shane Watson", b:2, i:"watson.jpeg"},
+ {n:"Kieron Pollard", b:2, i:"pollad.jpeg"},
+ {n:"Suryakumar Yadav", b:2, i:"sky.jpeg"},
+ {n:"Glenn Maxwell", b:2, i:"maxwell.jpeg"}
+];
+
+function nav(id) {
+ document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+ document.getElementById(id).classList.add('show');
+}
+
+function startNewAuction() {
+ pIdx = 0;
+ teams.forEach(t => { purse[t] = 100.0; rosters[t] = []; });
+ const grid = document.getElementById('teamGrid');
+ grid.innerHTML = "";
+ teams.forEach(t => {
+  let b = document.createElement('button'); b.className = 'btn'; b.innerText = t;
+  b.onclick = () => { myTeam = t; nav('auction'); next(); };
+  grid.appendChild(b);
+ });
+ nav('teamSelect');
+}
+
+async function speak(txt) {
+ return new Promise(res => {
+  window.speechSynthesis.cancel();
+  const m = new SpeechSynthesisUtterance(txt);
+  m.onstart = () => isSpeaking = true;
+  m.onend = () => { isSpeaking = false; res(); };
+  window.speechSynthesis.speak(m);
+ });
+}
+
+async function next() {
+ if(pIdx >= players.length) return endAuction();
+ let p = players[pIdx];
+ currentPrice = p.b; lead = null;
+ const img = document.getElementById('pimg');
+ img.classList.remove('img-enter'); void img.offsetWidth;
+ img.src = p.i; img.classList.add('img-enter');
+ document.getElementById('pname').innerText = p.n;
+ document.getElementById('price').innerText = currentPrice;
+ document.getElementById('status-log').innerText = "WAITING FOR BIDS...";
+ await speak(p.n + ". Base price " + p.b + " Crores.");
+ startTimer(30);
+}
+
+function startTimer(s) {
+ let left = s;
+ clearInterval(timer);
+ timer = setInterval(() => {
+  if(!isSpeaking) {
+   left--;
+   document.getElementById('timer').innerText = left + "s";
+   if(left > 5 && Math.random() > 0.8) aiBid();
+   if(left === 3 && lead) speak("Going once...");
+   if(left === 1 && lead) speak("Going twice...");
+   if(left <= 0) { clearInterval(timer); sold(); }
+  }
+ }, 1000);
+}
+
+function userBid() { if(lead !== myTeam && purse[myTeam] >= currentPrice + 0.5) place(myTeam); }
+
+function aiBid() {
+ const others = teams.filter(t => t !== lead && purse[t] >= currentPrice + 0.5);
+ if(others.length && Math.random() > 0.4) place(others[Math.floor(Math.random()*others.length)]);
+}
+
+function place(t) {
+ currentPrice += 0.5; lead = t;
+ const d = document.getElementById('price-display');
+ d.classList.remove('bid-shake'); void d.offsetWidth; d.classList.add('bid-shake');
+ document.getElementById('price').innerText = currentPrice;
+ document.getElementById('status-log').innerText = t + " is leading!";
+ speak(t + " bids " + currentPrice);
+ if(parseInt(document.getElementById('timer').innerText) < 6) startTimer(6);
+}
+
+async function sold() {
+ const h = document.getElementById('hammer'); h.classList.add('strike');
+ if(lead) {
+  purse[lead] = parseFloat((purse[lead] - currentPrice).toFixed(2));
+  rosters[lead].push(`${players[pIdx].n} (${currentPrice}Cr)`);
+  await speak("Sold! to " + lead);
+  massCrackerBlast(true); // 💥 SOLD MASS ANIMATION
+ } else { await speak(players[pIdx].n + " is unsold."); }
+ setTimeout(() => { h.classList.remove('strike'); pIdx++; next(); }, 1500);
+}
+
+function showSquads(isFinal) {
+ document.getElementById('squad-title').innerText = isFinal ? "🏆 FINAL STANDINGS 🏆" : "Team Rosters";
+ document.getElementById('back-btn').style.display = isFinal ? "none" : "block";
+ const g = document.getElementById('squadGrid'); g.innerHTML = "";
+ teams.forEach(t => {
+  let d = document.createElement('div'); 
+  d.style.background = "rgba(139, 92, 246, 0.2)"; 
+  d.style.padding = "15px"; d.style.borderRadius = "15px"; d.style.border = "1px solid var(--blue)";
+  d.innerHTML = `<b style="color:var(--blue)">${t} (₹${purse[t]} Cr)</b><br><small style="font-size:12px">${rosters[t].join(", ") || "No players"}</small>`;
+  g.appendChild(d);
+ });
+ nav('squadPage');
+}
+
+async function endAuction() {
+ await speak("The Mega Auction has concluded!");
+ showSquads(true);
+ massCrackerBlast(false); // 🎆 FINALE MASS ANIMATION
+ setTimeout(() => { nav('home'); }, 10000);
+}
+
+// 🎆 MASSIVE FIREWORKS ENGINE
+let particlesArray = [];
+function boom(isQuick) {
+ const c = document.getElementById('fireworks'); const ctx = c.getContext('2d');
+ c.width = window.innerWidth; c.height = window.innerHeight;
+ let originX = Math.random() * c.width;
+ let originY = Math.random() * (c.height * 0.7);
+ for(let i=0; i < (isQuick ? 100 : 200); i++) {
+  particlesArray.push({
+   x: originX, y: originY,
+   dx: (Math.random() - 0.5) * (isQuick ? 15 : 20),
+   dy: (Math.random() - 0.5) * (isQuick ? 15 : 20),
+   l: 1.0, color: `hsl(${Math.random() * 360}, 100%, 60%)`
+  });
+ }
+}
+
+function updateParticles() {
+ const c = document.getElementById('fireworks'); const ctx = c.getContext('2d');
+ ctx.clearRect(0,0,c.width,c.height);
+ for(let i = 0; i < particlesArray.length; i++){
+  let p = particlesArray[i];
+  p.x += p.dx; p.y += p.dy; p.dy += 0.08; p.l -= 0.015;
+  ctx.globalAlpha = p.l; ctx.fillStyle = p.color;
+  ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+  if(p.l <= 0) { particlesArray.splice(i, 1); i--; }
+ }
+ requestAnimationFrame(updateParticles);
+}
+updateParticles();
+
+function massCrackerBlast(isSold) {
+ let count = isSold ? 4 : 20; let i = 0;
+ let itv = setInterval(() => { boom(!isSold); i++; if(i >= count) clearInterval(itv); }, 200);
+}
+</script>
+</body>
+</html>
